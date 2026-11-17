@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FGC Input Lab — Entrenador de Comandos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #090b10;
+      --bg-panel: #11151d;
+      --bg-elevated: #181f2b;
+      --border-subtle: #252f40;
+      --accent-cyan: #00e5ff;
+      --accent-amber: #ffb300;
+      --accent-crimson: #ff2a5f;
+      --accent-emerald: #00e676;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg-base);
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Botones arcade sin latencia visual (0ms) */
+    .arcade-btn {
+      transition: none !important;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* Blindaje estricto para botones circulares (nunca se aplastan ni deforman) */
+    .circle-btn {
+      flex-shrink: 0 !important;
+      aspect-ratio: 1 / 1 !important;
+      border-radius: 9999px !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dir-circle-std {
+      width: 52px;
+      height: 52px;
+      min-width: 52px;
+      min-height: 52px;
+    }
+
+    .dir-circle-jump {
+      width: 62px;
+      height: 62px;
+      min-width: 62px;
+      min-height: 62px;
+    }
+
+    .atk-circle-std {
+      width: 50px;
+      height: 50px;
+      min-width: 50px;
+      min-height: 50px;
+    }
+
+    .aux-circle-sm {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    @media (max-width: 420px) {
+      .dir-circle-std {
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+        min-height: 46px;
+      }
+      .dir-circle-jump {
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        min-height: 56px;
+      }
+      .atk-circle-std {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+      }
+      .aux-circle-sm {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+      }
+    }
+
+    .arcade-btn.active-dir {
+      background: radial-gradient(circle at center, #00e5ff 0%, #0284c7 100%) !important;
+      border-color: #ffffff !important;
+      color: #05080c !important;
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.75), inset 0 0 8px rgba(255, 255, 255, 0.8);
+    }
+
+    .arcade-btn.active-jump {
+      background: radial-gradient(circle at center, #ff2a5f 0%, #be123c 100%) !important;
+      border-color: #ffffff !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 20px rgba(255, 42, 95, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.7);
+    }
+
+    .arcade-btn.active-atk-1 {
+      background: radial-gradient(circle at center, #38bdf8 0%, #0369a1 100%) !important;
+      border-color: #fff !important;
+      color: #fff !important;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.85);
+    }
+
+    .arcade-btn.active-atk-2 {
+      background: radial-gradient(circle at center, #fbbf24 0%, #b45309 100%) !important;
+      border-color: #fff !important;
+      color: #090d16 !important;
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.85);
+    }
+
+    .arcade-btn.active-atk-3 {
+      background: radial-gradient(circle at center, #34d399 0%, #047857 100%) !important;
+      border-color: #fff !important;
+      color: #05110d !important;
+      box-shadow: 0 0 18px rgba(52, 211, 153, 0.85);
+    }
+
+    .arcade-btn.active-atk-4 {
+      background: radial-gradient(circle at center, #f43f5e 0%, #9f1239 100%) !important;
+      border-color: #fff !important;
+      color: #fff !important;
+      box-shadow: 0 0 18px rgba(244, 63, 94, 0.85);
+    }
+
+    .arcade-btn.active-macro {
+      background: radial-gradient(circle at center, #c084fc 0%, #6b21a8 100%) !important;
+      border-color: #fff !important;
+      color: #fff !important;
+      box-shadow: 0 0 16px rgba(192, 132, 252, 0.8);
+    }
+
+    .arcade-btn.active-sys {
+      background: radial-gradient(circle at center, #f8fafc 0%, #94a3b8 100%) !important;
+      border-color: #ffffff !important;
+      color: #090d16 !important;
+      box-shadow: 0 0 16px rgba(248, 250, 252, 0.85);
+    }
+
+    /* Scrollbar limpio para historial */
+    .history-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .history-scroll::-webkit-scrollbar-track {
+      background: #0c1017;
+    }
+    .history-scroll::-webkit-scrollbar-thumb {
+      background: #283347;
+      border-radius: 9999px;
+    }
+
+    @keyframes flashSuccess {
+      0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.85); border-color: #00e676; }
+      100% { box-shadow: 0 0 28px 6px rgba(0, 230, 118, 0); border-color: #252f40; }
+    }
+
+    .drill-success-flash {
+      animation: flashSuccess 0.55s ease-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- =====================================================================
+       1. BARRA SUPERIOR: ESTADO DE CONEXIÓN Y CONTROLES GLOBALES
+  ====================================================================== -->
+  <header class="bg-[#11151d] border-b border-[#252f40] px-3 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center font-extrabold text-slate-950 text-sm shadow-lg shadow-cyan-500/20">
+        FGC
+      </div>
+      <div>
+        <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white leading-none">
+          INPUT <span class="text-cyan-400">LAB</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 mt-0.5 hidden sm:block">Leverless · Fightstick · Gamepad</p>
+      </div>
+    </div>
+
+    <!-- Estado de Mando Conectado, FPS y Botón Limpiar -->
+    <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+      <div id="controller-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#181f2b] border border-[#252f40] text-xs">
+        <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="controller-name" class="font-medium text-slate-200 max-w-[165px] sm:max-w-[270px] truncate">
+          Modo Teclado / Táctil (Conecta un mando)
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#181f2b] border border-[#252f40] text-xs mono">
+        <span class="text-slate-400">FPS:</span>
+        <span id="fps-counter" class="text-cyan-400 font-bold">60</span>
+      </div>
+
+      <button id="btn-top-clear" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 text-xs font-bold">
+        Limpiar Historial
+      </button>
+    </div>
+  </header>
+
+  <!-- Barra de Configuración: Layout, SOCD, Notación y Lado P1/P2 -->
+  <section class="bg-[#0d1118] border-b border-[#252f40] px-3 py-2 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-xs">
+    <!-- Selector de Layout Visual -->
+    <div class="flex items-center gap-1 bg-[#161c27] p-1 rounded-xl border border-[#252f40]">
+      <button data-layout="leverless" class="layout-btn px-3 py-1.5 rounded-lg font-semibold bg-cyan-500 text-slate-950 shadow">
+        Leverless
+      </button>
+      <button data-layout="fightstick" class="layout-btn px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white">
+        Fightstick
+      </button>
+      <button data-layout="gamepad" class="layout-btn px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white">
+        Gamepad
+      </button>
+    </div>
+
+    <!-- Selectores de SOCD, Botones y Posición P1/P2 -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- SOCD Cleaner -->
+      <div class="flex items-center gap-1.5 bg-[#161c27] px-2.5 py-1 rounded-xl border border-[#252f40]">
+        <label for="socd-mode" class="text-slate-400 font-medium">SOCD:</label>
+        <select id="socd-mode" class="bg-transparent text-cyan-300 font-bold focus:outline-none cursor-pointer">
+          <option value="neutral" class="bg-[#161c27]">Neutral (N)</option>
+          <option value="up-priority" class="bg-[#161c27]">Up Priority (U)</option>
+          <option value="last-win" class="bg-[#161c27]">Last Input Wins</option>
+        </select>
+      </div>
+
+      <!-- Notación de Botones -->
+      <div class="flex items-center gap-1.5 bg-[#161c27] px-2.5 py-1 rounded-xl border border-[#252f40]">
+        <label for="notation-mode" class="text-slate-400 font-medium">Botones:</label>
+        <select id="notation-mode" class="bg-transparent text-amber-300 font-bold focus:outline-none cursor-pointer">
+          <option value="numeric" class="bg-[#161c27]">1 / 2 / 3 / 4</option>
+          <option value="sf" class="bg-[#161c27]">Street Fighter (LP/MP/HP/LK/MK/HK)</option>
+          <option value="ps" class="bg-[#161c27]">PlayStation (□/△/R1/×/○/R2)</option>
+        </select>
+      </div>
+
+      <!-- Lado P1 / P2 -->
+      <div class="flex items-center gap-1 bg-[#161c27] p-1 rounded-xl border border-[#252f40]">
+        <button id="side-p1" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500 text-slate-950">
+          P1 (Izquierda)
+        </button>
+        <button id="side-p2" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white">
+          P2 (Derecha)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       CONTENIDO PRINCIPAL DE 3 COLUMNAS (ADAPTABLE A PC Y ANDROID)
+  ====================================================================== -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 sm:p-4 max-w-[1640px] w-full mx-auto">
+
+    <!-- COLUMNA IZQUIERDA: HISTORIAL DE INPUTS EN TIEMPO REAL -->
+    <aside class="lg:col-span-3 bg-[#11151d] border border-[#252f40] rounded-2xl flex flex-col overflow-hidden min-h-[260px] max-h-[560px] lg:max-h-[calc(100vh-135px)] order-2 lg:order-1">
+      <div class="px-3.5 py-2.5 bg-[#161c27] border-b border-[#252f40] flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <h2 class="font-bold text-xs uppercase tracking-wider text-slate-200">Historial de Inputs</h2>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="btn-pause-history" class="px-2 py-1 rounded-lg bg-[#202837] hover:bg-[#2a3549] text-[11px] font-semibold text-amber-300 border border-[#303c52]">
+            Pausar
+          </button>
+          <button id="btn-clear-history" class="px-2 py-1 rounded-lg bg-[#202837] hover:bg-rose-950/70 text-[11px] font-semibold text-rose-300 border border-[#303c52]">
+            Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Cabecera de columnas -->
+      <div class="grid grid-cols-12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-[#0c1017] border-b border-[#1e2636]">
+        <div class="col-span-3">Dir</div>
+        <div class="col-span-6">Botones</div>
+        <div class="col-span-3 text-right">Frames</div>
+      </div>
+
+      <!-- Lista scrolleable -->
+      <div id="history-list" class="flex-1 overflow-y-auto history-scroll divide-y divide-[#1a2230] px-2 py-1">
+        <!-- Se llena dinámicamente -->
+      </div>
+
+      <div class="px-3 py-2 bg-[#0c1017] border-t border-[#252f40] flex items-center justify-between text-[11px] text-slate-400">
+        <span>NumPad: <strong id="numpad-readout" class="mono text-cyan-400 text-sm">5</strong></span>
+        <button id="btn-toggle-order" class="text-slate-300 hover:text-white underline">
+          Reciente arriba
+        </button>
+      </div>
+    </aside>
+
+    <!-- COLUMNA CENTRAL: VISUALIZADOR INTERACTIVO DE CONTROL -->
+    <section class="lg:col-span-6 flex flex-col gap-3 order-1 lg:order-2">
+      <div class="bg-[#11151d] border border-[#252f40] rounded-2xl p-3 sm:p-5 flex-1 flex flex-col justify-between relative overflow-hidden shadow-xl">
+
+        <!-- Cabecera del Visualizador -->
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span id="layout-title" class="text-xs font-extrabold uppercase tracking-wider text-cyan-400">
+            Vista Leverless (Hitbox)
+          </span>
+          <span class="text-[11px] text-slate-400 hidden sm:inline">
+            Teclas: <span class="mono text-slate-300">WASD+Espacio</span> · <span class="mono text-slate-300">UIOP/JKL;</span> · <span class="mono text-slate-300">Bksp/T/Enter · N/M</span>
+          </span>
+        </div>
+
+        <!-- BARRA SUPERIOR AUXILIAR DE SISTEMA (SELECT, TOUCHPAD, START) EN TODAS LAS VISTAS -->
+        <div class="flex items-center justify-center gap-2.5 sm:gap-4 my-1.5 py-2 px-3 rounded-xl bg-[#0c1017] border border-[#1f2838]">
+          <button data-input="select" class="arcade-btn px-3 py-1.5 rounded-lg bg-[#1a2230] border border-[#36445c] flex items-center gap-1.5 text-xs font-bold text-slate-200 shadow">
+            <span>SELECT</span>
+            <span class="text-[9px] text-slate-400 mono hidden sm:inline">[Bksp]</span>
+          </button>
+
+          <button data-input="touch" class="arcade-btn px-5 sm:px-8 py-1.5 rounded-xl bg-[#18202e] border border-cyan-500/40 flex items-center gap-1.5 text-xs font-extrabold text-cyan-300 shadow">
+            <span>TOUCHPAD</span>
+            <span class="text-[9px] text-cyan-400/70 mono hidden sm:inline">[T]</span>
+          </button>
+
+          <button data-input="start" class="arcade-btn px-3 py-1.5 rounded-lg bg-[#1a2230] border border-[#36445c] flex items-center gap-1.5 text-xs font-bold text-slate-200 shadow">
+            <span>START</span>
+            <span class="text-[9px] text-slate-400 mono hidden sm:inline">[Enter]</span>
+          </button>
+        </div>
+
+        <!-- ===============================================================
+             VISTA 1: LEVERLESS (HITBOX + L3 / R3 SIN DEFORMACIÓN)
+        ================================================================ -->
+        <div id="view-leverless" class="my-auto py-3">
+          <div class="flex flex-col md:flex-row items-center justify-center gap-7 md:gap-9 max-w-2xl mx-auto">
+
+            <!-- Lado Izquierdo: Direcciones Circulares Fijas + Salto + L3 -->
+            <div class="flex flex-col items-center flex-shrink-0">
+              <div class="flex items-center gap-3">
+                <button data-input="left" class="arcade-btn circle-btn dir-circle-std bg-[#1a2230] border-2 border-[#36445c] shadow-lg">
+                  <span class="text-lg font-extrabold leading-none">←</span>
+                  <span class="text-[9px] text-slate-400 mt-0.5 mono">A</span>
+                </button>
+                <button data-input="down" style="transform: translateY(10px);" class="arcade-btn circle-btn dir-circle-std bg-[#1a2230] border-2 border-[#36445c] shadow-lg">
+                  <span class="text-lg font-extrabold leading-none">↓</span>
+                  <span class="text-[9px] text-slate-400 mt-0.5 mono">S</span>
+                </button>
+                <button data-input="right" style="transform: translateY(20px);" class="arcade-btn circle-btn dir-circle-std bg-[#1a2230] border-2 border-[#36445c] shadow-lg">
+                  <span class="text-lg font-extrabold leading-none">→</span>
+                  <span class="text-[9px] text-slate-400 mt-0.5 mono">D</span>
+                </button>
+              </div>
+
+              <!-- Fila Inferior Izquierda: L3 + Botón Salto Pulgar -->
+              <div class="mt-8 flex items-center gap-3.5 pl-4">
+                <button data-input="l3" class="arcade-btn circle-btn aux-circle-sm bg-[#1a2230] border-2 border-indigo-500/40 shadow-lg">
+                  <span class="text-xs font-extrabold leading-none text-indigo-300">L3</span>
+                  <span class="text-[8px] text-slate-400 mt-0.5 mono">N</span>
+                </button>
+
+                <button data-input="up" class="arcade-btn circle-btn dir-circle-jump bg-[#221a24] border-2 border-rose-500/50 shadow-xl">
+                  <span class="text-xl font-extrabold leading-none">↑</span>
+                  <span class="text-[8px] text-rose-300/80 mt-0.5 mono">ESPACIO</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Lado Derecho: 8 Botones Arcade + R3 -->
+            <div class="flex flex-col items-center justify-center gap-3 flex-shrink-0">
+              <!-- Fila Superior (1, 2, R1, L1) -->
+              <div class="flex items-center gap-2.5">
+                <button data-input="b1" class="arcade-btn circle-btn atk-circle-std btn-label-1 bg-[#1a2230] border-2 border-sky-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">1</span>
+                  <span class="text-[9px] text-slate-400 mono">U</span>
+                </button>
+                <button data-input="b2" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-2 bg-[#1a2230] border-2 border-amber-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">2</span>
+                  <span class="text-[9px] text-slate-400 mono">I</span>
+                </button>
+                <button data-input="r1" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-r1 bg-[#1a2230] border-2 border-purple-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">R1</span>
+                  <span class="text-[9px] text-slate-400 mono">O</span>
+                </button>
+                <button data-input="l1" class="arcade-btn circle-btn atk-circle-std btn-label-l1 bg-[#1a2230] border-2 border-slate-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">L1</span>
+                  <span class="text-[9px] text-slate-400 mono">P</span>
+                </button>
+              </div>
+
+              <!-- Fila Inferior (3, 4, R2, L2) -->
+              <div class="flex items-center gap-2.5">
+                <button data-input="b3" class="arcade-btn circle-btn atk-circle-std btn-label-3 bg-[#1a2230] border-2 border-emerald-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">3</span>
+                  <span class="text-[9px] text-slate-400 mono">J</span>
+                </button>
+                <button data-input="b4" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-4 bg-[#1a2230] border-2 border-rose-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">4</span>
+                  <span class="text-[9px] text-slate-400 mono">K</span>
+                </button>
+                <button data-input="r2" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-r2 bg-[#1a2230] border-2 border-purple-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">R2</span>
+                  <span class="text-[9px] text-slate-400 mono">L</span>
+                </button>
+                <button data-input="l2" class="arcade-btn circle-btn atk-circle-std btn-label-l2 bg-[#1a2230] border-2 border-slate-500/40 shadow-lg">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">L2</span>
+                  <span class="text-[9px] text-slate-400 mono">;</span>
+                </button>
+              </div>
+
+              <!-- Botón Auxiliar R3 debajo del bloque de ataque -->
+              <div class="w-full flex justify-start pl-1 pt-1">
+                <button data-input="r3" class="arcade-btn circle-btn aux-circle-sm bg-[#1a2230] border-2 border-indigo-500/40 shadow-lg">
+                  <span class="text-xs font-extrabold leading-none text-indigo-300">R3</span>
+                  <span class="text-[8px] text-slate-400 mt-0.5 mono">M</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===============================================================
+             VISTA 2: FIGHTSTICK ARCADE (PALANCA + 8 BOTONES + L3/R3)
+        ================================================================ -->
+        <div id="view-fightstick" class="hidden my-auto py-2">
+          <div class="flex flex-col md:flex-row items-center justify-center gap-7 max-w-2xl mx-auto">
+            <!-- Palanca Arcade -->
+            <div class="flex flex-col items-center justify-center flex-shrink-0">
+              <div class="relative w-36 h-36 sm:w-40 sm:h-40 rounded-full bg-[#0c1017] border-4 border-[#2b3648] flex items-center justify-center shadow-inner">
+                <div class="w-24 h-24 rounded-lg border border-dashed border-slate-700/80"></div>
+                <span class="absolute top-2 text-[10px] font-bold text-slate-500">↑</span>
+                <span class="absolute bottom-2 text-[10px] font-bold text-slate-500">↓</span>
+                <span class="absolute left-2.5 text-[10px] font-bold text-slate-500">←</span>
+                <span class="absolute right-2.5 text-[10px] font-bold text-slate-500">→</span>
+                <div id="stick-balltop" class="w-14 h-14 rounded-full bg-gradient-to-br from-rose-500 via-red-600 to-rose-900 border-2 border-rose-300/60 shadow-2xl absolute"></div>
+              </div>
+              <span class="text-[11px] text-slate-400 mt-2 mono">Palanca Arcade 8-Way</span>
+            </div>
+
+            <!-- 8 Botones Arcade + L3/R3 -->
+            <div class="flex flex-col items-center justify-center gap-3 flex-shrink-0">
+              <div class="flex items-center gap-2.5">
+                <button data-input="b1" class="arcade-btn circle-btn atk-circle-std btn-label-1 bg-[#1a2230] border-2 border-sky-500/40">
+                  <span class="lbl-main text-sm sm:text-base font-extrabold">1</span>
+                </button>
+                <button data-input="b2" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-2 bg-[#1a2230] border-2 border-amber-500/40">
+                  <span class="lbl-main text-sm sm:text-base font-extrabold">2</span>
+                </button>
+                <button data-input="r1" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-r1 bg-[#1a2230] border-2 border-purple-500/40">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">R1</span>
+                </button>
+                <button data-input="l1" class="arcade-btn circle-btn atk-circle-std btn-label-l1 bg-[#1a2230] border-2 border-slate-500/40">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">L1</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <button data-input="b3" class="arcade-btn circle-btn atk-circle-std btn-label-3 bg-[#1a2230] border-2 border-emerald-500/40">
+                  <span class="lbl-main text-sm sm:text-base font-extrabold">3</span>
+                </button>
+                <button data-input="b4" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-4 bg-[#1a2230] border-2 border-rose-500/40">
+                  <span class="lbl-main text-sm sm:text-base font-extrabold">4</span>
+                </button>
+                <button data-input="r2" style="transform: translateY(-6px);" class="arcade-btn circle-btn atk-circle-std btn-label-r2 bg-[#1a2230] border-2 border-purple-500/40">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">R2</span>
+                </button>
+                <button data-input="l2" class="arcade-btn circle-btn atk-circle-std btn-label-l2 bg-[#1a2230] border-2 border-slate-500/40">
+                  <span class="lbl-main text-xs sm:text-sm font-extrabold">L2</span>
+                </button>
+              </div>
+
+              <!-- Auxiliares L3 / R3 en Fightstick -->
+              <div class="flex items-center gap-4 pt-1">
+                <button data-input="l3" class="arcade-btn px-4 py-1.5 rounded-full bg-[#1a2230] border border-indigo-500/40 text-xs font-extrabold text-indigo-300">
+                  L3 <span class="text-[9px] text-slate-400 mono">[N]</span>
+                </button>
+                <button data-input="r3" class="arcade-btn px-4 py-1.5 rounded-full bg-[#1a2230] border border-indigo-500/40 text-xs font-extrabold text-indigo-300">
+                  R3 <span class="text-[9px] text-slate-400 mono">[M]</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===============================================================
+             VISTA 3: GAMEPAD ESTÁNDAR (D-PAD + STICKS + L3/R3 + BOTONES)
+        ================================================================ -->
+        <div id="view-gamepad" class="hidden my-auto py-2">
+          <div class="max-w-xl mx-auto flex flex-col gap-4">
+            <!-- Gatillos y Bumpers -->
+            <div class="flex justify-between px-4">
+              <div class="flex gap-2">
+                <button data-input="l2" class="arcade-btn px-4 py-1.5 rounded-t-xl bg-[#1a2230] border border-[#36445c] text-xs font-bold">L2 / LT</button>
+                <button data-input="l1" class="arcade-btn px-4 py-1.5 rounded-lg bg-[#1a2230] border border-[#36445c] text-xs font-bold">L1 / LB</button>
+              </div>
+              <div class="flex gap-2">
+                <button data-input="r1" class="arcade-btn px-4 py-1.5 rounded-lg bg-[#1a2230] border border-[#36445c] text-xs font-bold">R1 / RB</button>
+                <button data-input="r2" class="arcade-btn px-4 py-1.5 rounded-t-xl bg-[#1a2230] border border-[#36445c] text-xs font-bold">R2 / RT</button>
+              </div>
+            </div>
+
+            <!-- D-Pad y Botones Frontales -->
+            <div class="grid grid-cols-2 gap-6 items-center px-4">
+              <!-- Cruceta D-Pad -->
+              <div class="flex items-center justify-center">
+                <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                  <div></div>
+                  <button data-input="up" class="arcade-btn rounded-t-lg bg-[#1a2230] border border-[#36445c] flex items-center justify-center font-bold">↑</button>
+                  <div></div>
+                  <button data-input="left" class="arcade-btn rounded-l-lg bg-[#1a2230] border border-[#36445c] flex items-center justify-center font-bold">←</button>
+                  <div class="bg-[#131923] rounded-sm"></div>
+                  <button data-input="right" class="arcade-btn rounded-r-lg bg-[#1a2230] border border-[#36445c] flex items-center justify-center font-bold">→</button>
+                  <div></div>
+                  <button data-input="down" class="arcade-btn rounded-b-lg bg-[#1a2230] border border-[#36445c] flex items-center justify-center font-bold">↓</button>
+                  <div></div>
+                </div>
+              </div>
+
+              <!-- Botones Diamante (1, 2, 3, 4) -->
+              <div class="flex items-center justify-center">
+                <div class="grid grid-cols-3 gap-1 w-36 h-36">
+                  <div></div>
+                  <button data-input="b2" class="arcade-btn btn-label-2 rounded-full bg-[#1a2230] border-2 border-amber-500/50 flex items-center justify-center font-extrabold">
+                    <span class="lbl-main">2</span>
+                  </button>
+                  <div></div>
+                  <button data-input="b1" class="arcade-btn btn-label-1 rounded-full bg-[#1a2230] border-2 border-sky-500/50 flex items-center justify-center font-extrabold">
+                    <span class="lbl-main">1</span>
+                  </button>
+                  <div></div>
+                  <button data-input="b4" class="arcade-btn btn-label-4 rounded-full bg-[#1a2230] border-2 border-rose-500/50 flex items-center justify-center font-extrabold">
+                    <span class="lbl-main">4</span>
+                  </button>
+                  <div></div>
+                  <button data-input="b3" class="arcade-btn btn-label-3 rounded-full bg-[#1a2230] border-2 border-emerald-500/50 flex items-center justify-center font-extrabold">
+                    <span class="lbl-main">3</span>
+                  </button>
+                  <div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sticks Analógicos con L3 y R3 -->
+            <div class="flex items-center justify-center gap-10 pt-1">
+              <div class="flex flex-col items-center gap-1">
+                <div class="relative w-16 h-16 rounded-full bg-[#0c1017] border-2 border-[#2b3648] flex items-center justify-center">
+                  <button data-input="l3" id="gp-lstick" class="arcade-btn w-11 h-11 rounded-full bg-[#1f293a] border border-indigo-400/50 flex items-center justify-center text-xs font-extrabold text-indigo-300 shadow">
+                    L3
+                  </button>
+                </div>
+                <span class="text-[10px] text-slate-400 mono">Stick Izq [N]</span>
+              </div>
+
+              <div class="flex flex-col items-center gap-1">
+                <div class="relative w-16 h-16 rounded-full bg-[#0c1017] border-2 border-[#2b3648] flex items-center justify-center">
+                  <button data-input="r3" id="gp-rstick" class="arcade-btn w-11 h-11 rounded-full bg-[#1f293a] border border-indigo-400/50 flex items-center justify-center text-xs font-extrabold text-indigo-300 shadow">
+                    R3
+                  </button>
+                </div>
+                <span class="text-[10px] text-slate-400 mono">Stick Der [M]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra Inferior de Lectura Instantánea -->
+        <div class="mt-4 pt-3 border-t border-[#252f40] grid grid-cols-3 gap-2 text-center bg-[#0c1017] rounded-xl p-2.5">
+          <div>
+            <span class="block text-[10px] uppercase tracking-wider text-slate-400">Dirección Activa</span>
+            <span id="live-dir-icon" class="text-xl sm:text-2xl font-extrabold text-cyan-400 mono">N</span>
+          </div>
+          <div>
+            <span class="block text-[10px] uppercase tracking-wider text-slate-400">Botones Activos</span>
+            <span id="live-btn-combo" class="text-sm sm:text-base font-extrabold text-amber-300 mono truncate px-1">—</span>
+          </div>
+          <div>
+            <span class="block text-[10px] uppercase tracking-wider text-slate-400">Duración Actual</span>
+            <span id="live-frame-hold" class="text-base sm:text-lg font-extrabold text-emerald-400 mono">0f</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMNA DERECHA: PRÁCTICA DE EJECUCIÓN / DRILLS -->
+    <aside id="drill-panel" class="lg:col-span-3 bg-[#11151d] border border-[#252f40] rounded-2xl p-3.5 flex flex-col justify-between gap-3 order-3">
+      <div>
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h2 class="font-bold text-xs uppercase tracking-wider text-slate-200">Práctica de Comandos</h2>
+          </div>
+          <span id="drill-streak" class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold mono">
+            Completados: 0
+          </span>
+        </div>
+
+        <!-- Selector de Movimiento -->
+        <label for="drill-select" class="block text-[11px] text-slate-400 mb-1">Selecciona un movimiento:</label>
+        <select id="drill-select" class="w-full bg-[#181f2b] border border-[#2e394d] rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-cyan-400">
+          <option value="qcf">Quarter Circle Forward (236)</option>
+          <option value="dp">Shoryuken / Dragon Punch (623)</option>
+          <option value="hcb_f">Half Circle Back Forward (632146)</option>
+          <option value="ewgf">Crouch Dash / EWGF (6 n 2 3+2)</option>
+          <option value="kbd">Korean Backdash (4 n 4 1 4)</option>
+        </select>
+
+        <!-- Secuencia Visual Paso a Paso -->
+        <div class="mt-4 bg-[#0c1017] border border-[#252f40] rounded-xl p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span id="drill-name" class="text-xs font-extrabold text-cyan-300">Quarter Circle Forward</span>
+            <span id="drill-notation" class="text-[11px] mono text-slate-400">↓ ↘ → + 2</span>
+          </div>
+
+          <div id="drill-steps" class="flex flex-wrap items-center justify-center gap-1.5 my-3 min-h-[44px]">
+            <!-- Pasos dinámicos -->
+          </div>
+
+          <p id="drill-tip" class="text-[11px] text-slate-400 leading-relaxed">
+            Desliza suavemente de Abajo (↓) a Diagonal (↘) y Adelante (→), presionando el ataque al final.
+          </p>
+        </div>
+      </div>
+
+      <!-- Métricas del Último Intento -->
+      <div class="bg-[#161c27] border border-[#252f40] rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Última ejecución:</span>
+          <span id="drill-last-status" class="font-bold text-slate-300">Esperando input...</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-[#252f40] text-center">
+          <div class="bg-[#0c1017] rounded-lg p-1.5">
+            <span class="block text-[10px] text-slate-400">Tiempo Total</span>
+            <span id="drill-last-frames" class="mono text-sm font-extrabold text-amber-300">—</span>
+          </div>
+          <div class="bg-[#0c1017] rounded-lg p-1.5">
+            <span class="block text-[10px] text-slate-400">Precisión</span>
+            <span id="drill-clean-badge" class="mono text-sm font-extrabold text-cyan-400">—</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <script>
+    /**
+     * FGC INPUT LAB
+     * Motor de lectura en tiempo real (60fps) con Gamepad API, Teclado y Táctil
+     */
+
+    // =========================================================================
+    // 1. ESTADO GLOBAL
+    // =========================================================================
+    const state = {
+      layout: 'leverless',
+      socdMode: 'neutral', // 'neutral' | 'up-priority' | 'last-win'
+      notation: 'numeric', // 'numeric' | 'sf' | 'ps'
+      side: 'p1',          // 'p1' | 'p2'
+      historyPaused: false,
+      newestOnTop: true,
+
+      rawInputs: {
+        up: false, down: false, left: false, right: false,
+        b1: false, b2: false, b3: false, b4: false,
+        r1: false, r2: false, l1: false, l2: false,
+        select: false, start: false, touch: false,
+        l3: false, r3: false
+      },
+      keyboardInputs: {},
+      touchInputs: {},
+      gamepadInputs: {},
+
+      leftStickAxes: { x: 0, y: 0 },
+      rightStickAxes: { x: 0, y: 0 },
+
+      lastHorizontal: null,
+      lastVertical: null,
+
+      currentDirNum: 5,
+      currentButtons: [],
+      holdFrames: 0,
+      history: [],
+
+      fps: 60,
+      frameCounter: 0,
+      fpsTimer: performance.now(),
+
+      activeDrillKey: 'qcf',
+      drillStepIndex: 0,
+      drillTotalFramesElapsed: 0,
+      drillDirtyInputs: 0,
+      drillCompletedCount: 0
+    };
+
+    const DIR_SYMBOLS = {
+      7: '↖', 8: '↑', 9: '↗',
+      4: '←', 5: 'N', 6: '→',
+      1: '↙', 2: '↓', 3: '↘'
+    };
+
+    const BUTTON_LABELS = {
+      numeric: {
+        b1: '1', b2: '2', b3: '3', b4: '4',
+        r1: 'R1', r2: 'R2', l1: 'L1', l2: 'L2',
+        select: 'SEL', start: 'STA', touch: 'TOUCH', l3: 'L3', r3: 'R3'
+      },
+      sf: {
+        b1: 'LP', b2: 'MP', b3: 'LK', b4: 'MK',
+        r1: 'HP', r2: 'HK', l1: 'L1', l2: 'L2',
+        select: 'SEL', start: 'STA', touch: 'TOUCH', l3: 'L3', r3: 'R3'
+      },
+      ps: {
+        b1: '□', b2: '△', b3: '×', b4: '○',
+        r1: 'R1', r2: 'R2', l1: 'L1', l2: 'L2',
+        select: 'SEL', start: 'STA', touch: 'TOUCH', l3: 'L3', r3: 'R3'
+      }
+    };
+
+    const DRILLS = {
+      qcf: {
+        name: 'Quarter Circle Forward (236)',
+        tip: 'Desliza de Abajo (↓) a Diagonal (↘) y Adelante (→), presionando el ataque en el último paso.',
+        steps: [
+          { dir: 2, btn: null },
+          { dir: 3, btn: null },
+          { dir: 6, btn: 'b2' }
+        ],
+        maxGapFrames: 18
+      },
+      dp: {
+        name: 'Shoryuken / Dragon Punch (623)',
+        tip: 'Marca Adelante (→), baja directo a Abajo (↓) y termina en Diagonal Adelante (↘) + ataque.',
+        steps: [
+          { dir: 6, btn: null },
+          { dir: 2, btn: null },
+          { dir: 3, btn: 'b2' }
+        ],
+        maxGapFrames: 20
+      },
+      hcb_f: {
+        name: 'Half Circle Back Forward (632146)',
+        tip: 'Media luna completa desde Adelante hasta Atrás pasando por Abajo, y cierra rápido en Adelante + ataque.',
+        steps: [
+          { dir: 6, btn: null },
+          { dir: 2, btn: null },
+          { dir: 4, btn: null },
+          { dir: 6, btn: 'b2' }
+        ],
+        maxGapFrames: 22
+      },
+      ewgf: {
+        name: 'Crouch Dash / EWGF (6 n 2 3+2)',
+        tip: 'Toque rápido Adelante (→), suelta a Neutral (N), luego Abajo (↓) y Diagonal (↘) simultáneo con botón 2.',
+        steps: [
+          { dir: 6, btn: null },
+          { dir: 5, btn: null },
+          { dir: 2, btn: null },
+          { dir: 3, btn: 'b2' }
+        ],
+        maxGapFrames: 16
+      },
+      kbd: {
+        name: 'Korean Backdash (4 n 4 1 4)',
+        tip: 'Backdash (← N ←), cancela la recuperación tocando brevemente ↙ y suelta a ←.',
+        steps: [
+          { dir: 4, btn: null },
+          { dir: 5, btn: null },
+          { dir: 4, btn: null },
+          { dir: 1, btn: null },
+          { dir: 4, btn: null }
+        ],
+        maxGapFrames: 20
+      }
+    };
+
+    // =========================================================================
+    // 2. GAMEPAD API + TECLADO + TOUCH
+    // =========================================================================
+    window.addEventListener('gamepadconnected', (e) => {
+      updateControllerStatus(e.gamepad);
+    });
+
+    window.addEventListener('gamepaddisconnected', () => {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const activePad = Array.from(pads).find(p => p && p.connected);
+      updateControllerStatus(activePad || null);
+    });
+
+    function updateControllerStatus(pad) {
+      const dot = document.getElementById('status-dot');
+      const nameEl = document.getElementById('controller-name');
+      if (pad) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+        nameEl.textContent = pad.id;
+        nameEl.title = pad.id;
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+        nameEl.textContent = 'Modo Teclado / Táctil (Conecta un mando)';
+      }
+    }
+
+    function pollGamepad() {
+      if (!navigator.getGamepads) return;
+      const pads = navigator.getGamepads();
+      let pad = null;
+      for (let i = 0; i < pads.length; i++) {
+        if (pads[i] && pads[i].connected) {
+          pad = pads[i];
+          break;
+        }
+      }
+
+      if (!pad) {
+        state.gamepadInputs = {};
+        state.leftStickAxes = { x: 0, y: 0 };
+        state.rightStickAxes = { x: 0, y: 0 };
+        return;
+      }
+
+      const nameEl = document.getElementById('controller-name');
+      if (nameEl.textContent.includes('Modo Teclado')) {
+        updateControllerStatus(pad);
+      }
+
+      const b = pad.buttons;
+      const axes = pad.axes || [];
+      const DEADZONE = 0.35;
+
+      state.leftStickAxes = {
+        x: axes[0] !== undefined ? axes[0] : 0,
+        y: axes[1] !== undefined ? axes[1] : 0
+      };
+      state.rightStickAxes = {
+        x: axes[2] !== undefined ? axes[2] : 0,
+        y: axes[3] !== undefined ? axes[3] : 0
+      };
+
+      const dUp = (b[12] && b[12].pressed) || (axes[1] !== undefined && axes[1] < -DEADZONE);
+      const dDown = (b[13] && b[13].pressed) || (axes[1] !== undefined && axes[1] > DEADZONE);
+      const dLeft = (b[14] && b[14].pressed) || (axes[0] !== undefined && axes[0] < -DEADZONE);
+      const dRight = (b[15] && b[15].pressed) || (axes[0] !== undefined && axes[0] > DEADZONE);
+
+      state.gamepadInputs = {
+        up: Boolean(dUp),
+        down: Boolean(dDown),
+        left: Boolean(dLeft),
+        right: Boolean(dRight),
+        b3: Boolean(b[0] && b[0].pressed),
+        b4: Boolean(b[1] && b[1].pressed),
+        b1: Boolean(b[2] && b[2].pressed),
+        b2: Boolean(b[3] && b[3].pressed),
+        l1: Boolean(b[4] && b[4].pressed),
+        r1: Boolean(b[5] && b[5].pressed),
+        l2: Boolean(b[6] && b[6].pressed),
+        r2: Boolean(b[7] && b[7].pressed),
+        select: Boolean(b[8] && b[8].pressed),
+        start: Boolean(b[9] && b[9].pressed),
+        l3: Boolean(b[10] && b[10].pressed),
+        r3: Boolean(b[11] && b[11].pressed),
+        touch: Boolean(b[17] && b[17].pressed)
+      };
+    }
+
+    const KEY_MAP = {
+      'KeyW': 'up', 'ArrowUp': 'up', 'Space': 'up',
+      'KeyS': 'down', 'ArrowDown': 'down',
+      'KeyA': 'left', 'ArrowLeft': 'left',
+      'KeyD': 'right', 'ArrowRight': 'right',
+      'KeyU': 'b1', 'KeyI': 'b2', 'KeyO': 'r1', 'KeyP': 'l1',
+      'KeyJ': 'b3', 'KeyK': 'b4', 'KeyL': 'r2', 'Semicolon': 'l2',
+      'Backspace': 'select',
+      'Enter': 'start',
+      'KeyT': 'touch',
+      'KeyN': 'l3',
+      'KeyM': 'r3'
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+      const mapped = KEY_MAP[e.code];
+      if (mapped) {
+        e.preventDefault();
+        state.keyboardInputs[mapped] = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const mapped = KEY_MAP[e.code];
+      if (mapped) {
+        state.keyboardInputs[mapped] = false;
+      }
+    });
+
+    document.querySelectorAll('.arcade-btn[data-input]').forEach(btn => {
+      const inputKey = btn.getAttribute('data-input');
+
+      const press = (e) => {
+        e.preventDefault();
+        state.touchInputs[inputKey] = true;
+      };
+      const release = (e) => {
+        e.preventDefault();
+        state.touchInputs[inputKey] = false;
+      };
+
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('pointercancel', release);
+    });
+
+    // =========================================================================
+    // 3. RESOLUCIÓN SOCD Y BOTONES ACTIVOS
+    // =========================================================================
+    function resolveInputs() {
+      const prev = { ...state.rawInputs };
+      const allKeys = [
+        'up', 'down', 'left', 'right',
+        'b1', 'b2', 'b3', 'b4', 'r1', 'r2', 'l1', 'l2',
+        'select', 'start', 'touch', 'l3', 'r3'
+      ];
+
+      for (const k of allKeys) {
+        state.rawInputs[k] = Boolean(
+          state.gamepadInputs[k] || state.keyboardInputs[k] || state.touchInputs[k]
+        );
+      }
+
+      if (state.rawInputs.left && !prev.left) state.lastHorizontal = 'left';
+      if (state.rawInputs.right && !prev.right) state.lastHorizontal = 'right';
+      if (state.rawInputs.up && !prev.up) state.lastVertical = 'up';
+      if (state.rawInputs.down && !prev.down) state.lastVertical = 'down';
+
+      let { up, down, left, right } = state.rawInputs;
+
+      if (state.socdMode === 'neutral') {
+        if (left && right) { left = false; right = false; }
+        if (up && down) { up = false; down = false; }
+      } else if (state.socdMode === 'up-priority') {
+        if (left && right) { left = false; right = false; }
+        if (up && down) { up = true; down = false; }
+      } else if (state.socdMode === 'last-win') {
+        if (left && right) {
+          left = state.lastHorizontal === 'left';
+          right = state.lastHorizontal === 'right';
+        }
+        if (up && down) {
+          up = state.lastVertical === 'up';
+          down = state.lastVertical === 'down';
+        }
+      }
+
+      let dirNum = 5;
+      if (up && left) dirNum = 7;
+      else if (up && right) dirNum = 9;
+      else if (up) dirNum = 8;
+      else if (down && left) dirNum = 1;
+      else if (down && right) dirNum = 3;
+      else if (down) dirNum = 2;
+      else if (left) dirNum = 4;
+      else if (right) dirNum = 6;
+
+      const btnOrder = [
+        'b1', 'b2', 'b3', 'b4', 'r1', 'r2', 'l1', 'l2',
+        'l3', 'r3', 'select', 'start', 'touch'
+      ];
+      const activeBtns = btnOrder.filter(b => state.rawInputs[b]);
+
+      return { dirNum, activeBtns, cleanDirs: { up, down, left, right } };
+    }
+
+    // =========================================================================
+    // 4. ACTUALIZACIÓN VISUAL DEL MANDO E HISTORIAL
+    // =========================================================================
+    function updateVisualController(cleanDirs) {
+      document.querySelectorAll('.arcade-btn[data-input]').forEach(btn => {
+        const key = btn.getAttribute('data-input');
+        const isPressed = ['up', 'down', 'left', 'right'].includes(key)
+          ? cleanDirs[key]
+          : state.rawInputs[key];
+
+        btn.classList.remove(
+          'active-dir', 'active-jump',
+          'active-atk-1', 'active-atk-2', 'active-atk-3', 'active-atk-4',
+          'active-macro', 'active-sys'
+        );
+
+        if (isPressed) {
+          if (key === 'up') btn.classList.add('active-jump');
+          else if (['down', 'left', 'right'].includes(key)) btn.classList.add('active-dir');
+          else if (key === 'b1') btn.classList.add('active-atk-1');
+          else if (key === 'b2') btn.classList.add('active-atk-2');
+          else if (key === 'b3') btn.classList.add('active-atk-3');
+          else if (key === 'b4') btn.classList.add('active-atk-4');
+          else if (['select', 'start', 'touch'].includes(key)) btn.classList.add('active-sys');
+          else btn.classList.add('active-macro');
+        }
+      });
+
+      const balltop = document.getElementById('stick-balltop');
+      if (balltop) {
+        let dx = 0, dy = 0;
+        if (cleanDirs.left) dx -= 28;
+        if (cleanDirs.right) dx += 28;
+        if (cleanDirs.up) dy -= 28;
+        if (cleanDirs.down) dy += 28;
+        if (dx !== 0 && dy !== 0) {
+          dx *= 0.72;
+          dy *= 0.72;
+        }
+        balltop.style.transform = `translate(${dx}px, ${dy}px)`;
+      }
+
+      const gpL = document.getElementById('gp-lstick');
+      const gpR = document.getElementById('gp-rstick');
+      if (gpL) {
+        gpL.style.transform = `translate(${state.leftStickAxes.x * 10}px, ${state.leftStickAxes.y * 10}px)`;
+      }
+      if (gpR) {
+        gpR.style.transform = `translate(${state.rightStickAxes.x * 10}px, ${state.rightStickAxes.y * 10}px)`;
+      }
+    }
+
+    function formatButtonCombo(btnKeys) {
+      if (!btnKeys || btnKeys.length === 0) return '—';
+      const dict = BUTTON_LABELS[state.notation];
+      return btnKeys.map(k => dict[k] || k).join('+');
+    }
+
+    function pushHistoryEntry(dirNum, btnKeys) {
+      if (state.historyPaused) return;
+      if (dirNum === 5 && btnKeys.length === 0 && state.history.length === 0) return;
+
+      const entry = {
+        dirNum,
+        btnKeys: [...btnKeys],
+        frames: 1
+      };
+
+      if (state.newestOnTop) {
+        state.history.unshift(entry);
+        if (state.history.length > 90) state.history.pop();
+      } else {
+        state.history.push(entry);
+        if (state.history.length > 90) state.history.shift();
+      }
+
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('history-list');
+      list.innerHTML = '';
+
+      for (const item of state.history) {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-12 items-center px-2 py-1.5 rounded-lg text-xs hover:bg-[#161d29]';
+
+        const dirColor = item.dirNum === 5 ? 'text-slate-500' : 'text-cyan-400';
+        const comboText = formatButtonCombo(item.btnKeys);
+        const comboColor = item.btnKeys.length > 0 ? 'text-amber-300 font-bold' : 'text-slate-600';
+        const frameDisplay = item.frames > 99 ? '99f+' : `${item.frames}f`;
+
+        row.innerHTML = `
+          <div class="col-span-3 font-extrabold text-base leading-none ${dirColor} mono">
+            ${DIR_SYMBOLS[item.dirNum]}
+          </div>
+          <div class="col-span-6 truncate ${comboColor} mono">
+            ${comboText}
+          </div>
+          <div class="col-span-3 text-right mono font-bold text-slate-300">
+            ${frameDisplay}
+          </div>
+        `;
+        list.appendChild(row);
+      }
+    }
+
+    function updateTopHistoryFrames(frames) {
+      if (state.historyPaused || state.history.length === 0) return;
+      const target = state.newestOnTop ? state.history[0] : state.history[state.history.length - 1];
+      target.frames = frames;
+      const list = document.getElementById('history-list');
+      const row = state.newestOnTop ? list.firstElementChild : list.lastElementChild;
+      if (row && row.lastElementChild) {
+        row.lastElementChild.textContent = frames > 99 ? '99f+' : `${frames}f`;
+      }
+    }
+
+    // =========================================================================
+    // 5. EVALUACIÓN DE DRILLS CON ESPEJADO P1 / P2
+    // =========================================================================
+    function mirrorDirForSide(dirNum) {
+      if (state.side === 'p1') return dirNum;
+      const mirrorMap = { 1: 3, 3: 1, 4: 6, 6: 4, 7: 9, 9: 7, 2: 2, 5: 5, 8: 8 };
+      return mirrorMap[dirNum] || dirNum;
+    }
+
+    function renderDrillSteps() {
+      const drill = DRILLS[state.activeDrillKey];
+      document.getElementById('drill-name').textContent = drill.name;
+      document.getElementById('drill-tip').textContent = drill.tip;
+
+      const dict = BUTTON_LABELS[state.notation];
+      const notationStr = drill.steps.map(s => {
+        const dSym = DIR_SYMBOLS[mirrorDirForSide(s.dir)];
+        return s.btn ? `${dSym}+${dict[s.btn]}` : dSym;
+      }).join(' ');
+      document.getElementById('drill-notation').textContent = notationStr;
+
+      const container = document.getElementById('drill-steps');
+      container.innerHTML = '';
+
+      drill.steps.forEach((step, idx) => {
+        const badge = document.createElement('div');
+        const isDone = idx < state.drillStepIndex;
+        const isCurrent = idx === state.drillStepIndex;
+
+        let classes = 'px-2.5 py-1.5 rounded-xl border text-xs font-extrabold mono flex items-center gap-1 ';
+        if (isDone) {
+          classes += 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)]';
+        } else if (isCurrent) {
+          classes += 'bg-cyan-500/20 border-cyan-400 text-cyan-200 scale-105';
+        } else {
+          classes += 'bg-[#161c27] border-[#2a3548] text-slate-400';
+        }
+
+        const dirSym = DIR_SYMBOLS[mirrorDirForSide(step.dir)];
+        const btnTxt = step.btn ? `+${dict[step.btn]}` : '';
+        badge.className = classes;
+        badge.textContent = `${dirSym}${btnTxt}`;
+        container.appendChild(badge);
+      });
+    }
+
+    function evaluateDrill(dirNum, activeBtns, stateChanged) {
+      const drill = DRILLS[state.activeDrillKey];
+      if (!drill) return;
+
+      if (state.drillStepIndex > 0) {
+        state.drillTotalFramesElapsed++;
+      }
+
+      if (!stateChanged) return;
+
+      const expected = drill.steps[state.drillStepIndex];
+      const targetDir = mirrorDirForSide(expected.dir);
+      const dirMatches = dirNum === targetDir;
+      const btnMatches = !expected.btn || activeBtns.includes(expected.btn);
+
+      if (dirMatches && btnMatches) {
+        if (state.drillStepIndex === 0) {
+          state.drillTotalFramesElapsed = 1;
+          state.drillDirtyInputs = 0;
+        }
+        state.drillStepIndex++;
+
+        if (state.drillStepIndex >= drill.steps.length) {
+          state.drillCompletedCount++;
+          document.getElementById('drill-streak').textContent = `Completados: ${state.drillCompletedCount}`;
+          document.getElementById('drill-last-status').innerHTML = `<span class="text-emerald-400">¡COMPLETADO!</span>`;
+          document.getElementById('drill-last-frames').textContent = `${state.drillTotalFramesElapsed}f`;
+          document.getElementById('drill-clean-badge').textContent =
+            state.drillDirtyInputs === 0 ? '100% Limpio' : `${state.drillDirtyInputs} extra`;
+
+          const panel = document.getElementById('drill-panel');
+          panel.classList.remove('drill-success-flash');
+          void panel.offsetWidth;
+          panel.classList.add('drill-success-flash');
+
+          state.drillStepIndex = 0;
+          state.drillTotalFramesElapsed = 0;
+        }
+        renderDrillSteps();
+      } else if (state.drillStepIndex > 0) {
+        if (state.drillTotalFramesElapsed > drill.maxGapFrames * drill.steps.length) {
+          state.drillStepIndex = 0;
+          state.drillTotalFramesElapsed = 0;
+          renderDrillSteps();
+        } else {
+          state.drillDirtyInputs++;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 6. BUCLE PRINCIPAL DE 60FPS
+    // =========================================================================
+    function mainLoop(now) {
+      state.frameCounter++;
+      if (now - state.fpsTimer >= 500) {
+        state.fps = Math.round((state.frameCounter * 1000) / (now - state.fpsTimer));
+        document.getElementById('fps-counter').textContent = state.fps;
+        state.frameCounter = 0;
+        state.fpsTimer = now;
+      }
+
+      pollGamepad();
+
+      const { dirNum, activeBtns, cleanDirs } = resolveInputs();
+      updateVisualController(cleanDirs);
+
+      const prevBtnStr = state.currentButtons.join(',');
+      const currBtnStr = activeBtns.join(',');
+      const stateChanged = (dirNum !== state.currentDirNum) || (currBtnStr !== prevBtnStr);
+
+      if (stateChanged) {
+        state.currentDirNum = dirNum;
+        state.currentButtons = activeBtns;
+        state.holdFrames = 1;
+        pushHistoryEntry(dirNum, activeBtns);
+      } else {
+        state.holdFrames++;
+        updateTopHistoryFrames(state.holdFrames);
+      }
+
+      document.getElementById('live-dir-icon').textContent = DIR_SYMBOLS[dirNum];
+      document.getElementById('numpad-readout').textContent = dirNum;
+      document.getElementById('live-btn-combo').textContent = formatButtonCombo(activeBtns);
+      document.getElementById('live-frame-hold').textContent =
+        state.holdFrames > 99 ? '99f+' : `${state.holdFrames}f`;
+
+      evaluateDrill(dirNum, activeBtns, stateChanged);
+
+      requestAnimationFrame(mainLoop);
+    }
+
+    // =========================================================================
+    // 7. EVENTOS DE INTERFAZ
+    // =========================================================================
+    document.querySelectorAll('.layout-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.layout-btn').forEach(b => {
+          b.className = 'layout-btn px-3 py-1.5 rounded-lg font-semibold text-slate-300 hover:text-white';
+        });
+        btn.className = 'layout-btn px-3 py-1.5 rounded-lg font-semibold bg-cyan-500 text-slate-950 shadow';
+
+        state.layout = btn.getAttribute('data-layout');
+        document.getElementById('view-leverless').classList.toggle('hidden', state.layout !== 'leverless');
+        document.getElementById('view-fightstick').classList.toggle('hidden', state.layout !== 'fightstick');
+        document.getElementById('view-gamepad').classList.toggle('hidden', state.layout !== 'gamepad');
+
+        const titles = {
+          leverless: 'Vista Leverless (Hitbox)',
+          fightstick: 'Vista Fightstick Arcade',
+          gamepad: 'Vista Gamepad Estándar'
+        };
+        document.getElementById('layout-title').textContent = titles[state.layout];
+      });
+    });
+
+    document.getElementById('socd-mode').addEventListener('change', (e) => {
+      state.socdMode = e.target.value;
+    });
+
+    document.getElementById('notation-mode').addEventListener('change', (e) => {
+      state.notation = e.target.value;
+      const dict = BUTTON_LABELS[state.notation];
+      ['b1', 'b2', 'b3', 'b4', 'r1', 'r2', 'l1', 'l2'].forEach(key => {
+        const cls = key.startsWith('b') ? `btn-label-${key.slice(1)}` : `btn-label-${key}`;
+        document.querySelectorAll(`.${cls} .lbl-main`).forEach(el => {
+          el.textContent = dict[key];
+        });
+      });
+      renderHistory();
+      renderDrillSteps();
+    });
+
+    function clearHistory() {
+      state.history = [];
+      renderHistory();
+    }
+
+    document.getElementById('btn-clear-history').addEventListener('click', clearHistory);
+    document.getElementById('btn-top-clear').addEventListener('click', clearHistory);
+
+    document.getElementById('btn-pause-history').addEventListener('click', (e) => {
+      state.historyPaused = !state.historyPaused;
+      e.target.textContent = state.historyPaused ? 'Reanudar' : 'Pausar';
+      e.target.classList.toggle('bg-amber-500', state.historyPaused);
+      e.target.classList.toggle('text-slate-950', state.historyPaused);
+    });
+
+    document.getElementById('btn-toggle-order').addEventListener('click', (e) => {
+      state.newestOnTop = !state.newestOnTop;
+      state.history.reverse();
+      e.target.textContent = state.newestOnTop ? 'Reciente arriba' : 'Reciente abajo';
+      renderHistory();
+    });
+
+    document.getElementById('drill-select').addEventListener('change', (e) => {
+      state.activeDrillKey = e.target.value;
+      state.drillStepIndex = 0;
+      state.drillTotalFramesElapsed = 0;
+      renderDrillSteps();
+    });
+
+    document.getElementById('side-p1').addEventListener('click', () => {
+      state.side = 'p1';
+      document.getElementById('side-p1').className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500 text-slate-950';
+      document.getElementById('side-p2').className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white';
+      state.drillStepIndex = 0;
+      renderDrillSteps();
+    });
+
+    document.getElementById('side-p2').addEventListener('click', () => {
+      state.side = 'p2';
+      document.getElementById('side-p2').className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500 text-slate-950';
+      document.getElementById('side-p1').className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white';
+      state.drillStepIndex = 0;
+      renderDrillSteps();
+    });
+
+    window.onload = function () {
+      renderDrillSteps();
+      requestAnimationFrame(mainLoop);
+    };
+  </script>
+</body>
+</html>
